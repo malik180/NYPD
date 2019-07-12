@@ -1,0 +1,138 @@
+
+Traffic Collision in NYC (2013-2018)
+
+This analysis of traffic collisions in New York City focuses on factors that contribute to the likelihood of being killed or injured (hereafter referred to as a casualty) in an accident during the time period between years 2013 and 2018.
+
+This analysis consists of seven parts:
+
+The first part consists of data pre-processing and exploratory analysis. After this the total number of injured persons were calculated for the year 2018.
+The second part addresses the question of what proportion of all collisions in the year 2016 occurred in Brooklyn.
+The third part addresses the question of what proportion of collisions in the year 2016 resulted in injury or death of a cyclist.
+The fourth part required computation of the number of accidents per capita involving alcohol in 2017 for each borough. Highest value was to be reported.
+Fifth part required finding the zip code with the highest number of vehicles involved in collisions for the year 2018.
+Sixth part was based on linear regression and reporting the slope of the regression line for total number of collisions vs the time period in years.
+Finally, the seventh part involved validating the null hypothesis: The total number of collisions are ambivalent to a particular month for the year 2017. A chi squared test was performed.
+
+
+This analysis is based on the NYPD Motor Vehicle Collisions dataset available here: https://data.cityofnewyork.us/Public-Safety/NYPD-Motor-Vehicle-Collisions/h9gi-nx95
+
+The population data for different boroughs in NY was taken from here:
+https://en.wikipedia.org/wiki/Boroughs_of_New_York_City
+#Ans to q1
+```{r}
+data = read.csv("C:/Users/Malik/Desktop/NYPD_Motor_Vehicle_Collisions.csv")
+library(dplyr)
+options(digits = 10)
+data$DATE <- as.Date(data$DATE, "%m/%d/%Y")
+data=data[data$DATE <= "2018-12-31",]
+TPI = sum(data$NUMBER.OF.PERSONS.INJURED[!is.na(data$NUMBER.OF.PERSONS.INJURED)])
+TPI
+```
+
+```{r}
+#splitting data for year 2016 only
+dat2=data[data$DATE <= "2016-12-31" & data$DATE >= "2016-01-01",]
+count_borough <- count(dat2, BOROUGH)
+count_Brook = count_borough[3,2]
+#removing null values as stated in q2
+count_borough = count_borough[-1,]
+prop_brook= count_Brook/sum(count_borough$n)
+prop_brook
+```
+
+#Ans to q2
+
+
+#Ans to q3
+```{r}
+count_nodi <- count(dat2,NUMBER.OF.CYCLIST.INJURED =="0" & NUMBER.OF.CYCLIST.KILLED =="0")
+prop2 <- count_nodi[1,2]/sum(count_nodi$n)
+prop2
+```
+
+```{r}
+#loading data for q4 pop of different bouroghs
+boropop = read.csv("C:/Users/Malik/Desktop/boropop.csv")
+#splitting data for year 2017 only
+data2017=data[data$DATE <= "2017-12-31" & data$DATE >= "2017-01-01",]
+
+count_2017_BR = count(data2017,BOROUGH=="BRONX" & (CONTRIBUTING.FACTOR.VEHICLE.1=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.2=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.3=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.4=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.5=="Alcohol Involvement"))
+count_2017_SI = count(data2017,BOROUGH=="STATEN ISLAND" & (CONTRIBUTING.FACTOR.VEHICLE.1=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.2=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.3=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.4=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.5=="Alcohol Involvement"))
+count_2017_Queen = count(data2017,BOROUGH=="QUEENS" & (CONTRIBUTING.FACTOR.VEHICLE.1=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.2=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.3=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.4=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.5=="Alcohol Involvement"))
+count_2017_BROK = count(data2017,BOROUGH=="BROOKLYN" & (CONTRIBUTING.FACTOR.VEHICLE.1=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.2=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.3=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.4=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.5=="Alcohol Involvement"))
+count_2017_MAN <- count(data2017,BOROUGH=="MANHATTAN" & (CONTRIBUTING.FACTOR.VEHICLE.1=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.2=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.3=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.4=="Alcohol Involvement"| CONTRIBUTING.FACTOR.VEHICLE.5=="Alcohol Involvement"))
+
+#finding prop with the help of pop count for each borough
+BROK_CAP = count_2017_BROK[2,2]/boropop[2,2]
+MAN_CAP  = count_2017_MAN[2,2]/boropop[3,2]
+SI_CAP = count_2017_SI[2,2]/boropop[5,2]
+BRONX_CAP = count_2017_BR[2,2]/boropop[1,2]
+QUE_CAP = count_2017_Queen[2,2]/boropop[4,2]
+max_cap = max(BROK_CAP,MAN_CAP,SI_CAP,BRONX_CAP,QUE_CAP)
+max_cap
+```
+
+#Brooklyn had the highest prop . Ans Q4
+```{r}
+data2016<- data.frame(dat2$ZIP.CODE,dat2$CONTRIBUTING.FACTOR.VEHICLE.1,dat2$CONTRIBUTING.FACTOR.VEHICLE.2,dat2$CONTRIBUTING.FACTOR.VEHICLE.3,dat2$CONTRIBUTING.FACTOR.VEHICLE.4,dat2$CONTRIBUTING.FACTOR.VEHICLE.5)
+#adding another column for no of vehicles involved in collision 
+data2016$veh_inv = 5-(rowSums(is.na(data2016[2:6]) | data2016[2:6] == "" | data2016[2:6] == " "))
+data2016 = data2016 %>% group_by(dat2.ZIP.CODE) %>% summarise(veh_inv = sum(veh_inv))
+data2016= data2016[order((data2016$veh_inv),decreasing=TRUE),]
+#removing row of null values
+data2016 = data2016[-1,]
+data2016[1,2]
+```
+
+
+#5243 for zip code 11207 being the highest . Ans Q5
+```{r}
+
+#splitting data from year 2013-2018
+data13_18=data[data$DATE <= "2018-12-31" & data$DATE >= "2013-01-01",]
+data13_18$year <- format(as.Date(data13_18$DATE), "%Y")
+data3 <-data.frame(data13_18$year)
+year13_18_col<-count(data3,data3$data13_18.year)
+colnames(year13_18_col)[1] = "year"
+colnames(year13_18_col)[2] = "NoCol"
+year13_18_col = within(year13_18_col, { year <- as.numeric(as.character(year))})
+#performing linear regression
+model = lm(NoCol~year,data=year13_18_col)
+slope = model$coef
+slope[2]
+```
+
+#6448.171429 slope value. Q6
+
+```{r}
+#splitting data for year 2017 alone
+data2017_d = data[data$DATE <= "2017-12-31"& data$DATE>= "2017-01-01",]
+data2017_d$month = format(as.Date(data2017_d$DATE), "%m")
+data2017 = data.frame(data2017_d$month,data2017_d$CONTRIBUTING.FACTOR.VEHICLE.1,data2017_d$CONTRIBUTING.FACTOR.VEHICLE.2,data2017_d$CONTRIBUTING.FACTOR.VEHICLE.3,data2017_d$CONTRIBUTING.FACTOR.VEHICLE.4,data2017$CONTRIBUTING.FACTOR.VEHICLE.5)
+data2017$veh_inv = 5-(rowSums(is.na(data2017) | data2017 == "" | data2017 == " "))
+#making a copy
+colnames(data2017)[1] = "month"
+data2017$month <- as.numeric(data2017$month)
+data2017_veh3 = data2017
+data2017_veh3 = subset(data2017_veh3, veh_inv>=3)
+#removed data with vehicles involved less than 3
+count_month_veh3 = count(data2017_veh3,data2017_veh3$month)
+count_month_all = count(data2017,data2017$month)
+prop_veh <- count_month_veh3$n / count_month_all$n
+prop_veh
+#gives an array of the prop of vehicles >3 involved in collision
+null_count = sum(count_month_veh3$n)
+exp_value = null_count/12
+#1210 is the mean of multi collisions each month. calculated for chi squared
+chi = cbind(count_month_veh3$n,exp_value)
+chi_2 = rbind(chi[1],chi[4])
+chi_3 = rbind(chi[1,2],chi[4,2])
+chisq = cbind(chi_2,chi_3)
+#table includes values of Observed collisions for month of jan and may as well as expected value that is mean 1210
+
+chi_out = chisq.test(chisq)
+chi_out$statistic
+```
+
+#0.2865976938 Chi Squared value . Ans Q7 
+
